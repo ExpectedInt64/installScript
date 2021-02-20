@@ -9,7 +9,7 @@ dpkg -s $VAR1 &> /dev/null
 if ! [ $? -ne 0 ]  # kontrol om exit status for den sidste kørte kommando
     then #Not installed
         echo "$VAR1 is already installed! Aborting!"
-        exit        
+        exit2
 fi
 
 read -p "Install from source or with dpkg/rpm?  d:Dpkg or s:Source " INSTALL_TYPE
@@ -36,15 +36,27 @@ if [[ "$INSTALL_TYPE" == "d" ]]; then
 
     if [ $? -ne 0 ]; then
         cat error.log | egrep -o "'[a-z0-9-]+'" > dependencies
-         for line in $(cat dependencies); do
+
+        echo "Package needs these dependencies:"
+        cat dependencies
+        read -p "Please choose how to handle dependencies: m:Manual installing with URL , a:APT-CACHE install or e:exit " VAR2
+
+        if [[ "$VAR2" == "m" ]]; then
+             for line in $(cat dependencies); do
           echo "Dependencies missing please install: $line"
 
-          read FILE_LINK_DEPENDENCY
+          read -p "Link to file download: " FILE_LINK_DEPENDENCY
 
           wget "$FILE_LINK_DEPENDENCY"
           FILE_DEPENDENCY=$(ls -c | head -n1)
           dpkg -i "$FILE_DEPENDENCY"
           done
+
+          elif [ "$VAR2" == "a" ]; then
+              echo "APT-CACHE selected"
+          else
+            exit2
+        fi
     fi
 
     dpkg -i "$FILE"

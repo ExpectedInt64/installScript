@@ -21,7 +21,7 @@ PERMISSON=$(stat -c "%a" /usr/local/src)
 
 if [ "$PERMISSON" -ne 777 ]; then
 
-    chmod -R 777 /usr/local/src
+    chmod -R 777 /usr/local/src 2> error2.log
 
 fi
 
@@ -38,22 +38,28 @@ if [[ "$INSTALL_TYPE" == "d" ]]; then
         cat error.log | egrep -o "'[a-z0-9-]+'" > dependencies
 
         echo "Package needs these dependencies:"
-        cat dependencies
-        read -p "Please choose how to handle dependencies: m:Manual installing with URL , a:APT-CACHE install or e:exit " VAR2
+        cat dependencies | tr -d \'
+        read -p "Please choose how to handle dependencies: a:APT-CACHE download or e:exit " VAR2
 
-        if [[ "$VAR2" == "m" ]]; then
-             for line in $(cat dependencies); do
-          echo "Dependencies missing please install: $line"
+        if [[ "$VAR2" == "a" ]]; then
+             for line in $(cat dependencies | tr -d \'); do
+          echo "Installing dependency: $line"
 
-          read -p "Link to file download: " FILE_LINK_DEPENDENCY
+          apt download $line
 
-          wget "$FILE_LINK_DEPENDENCY"
           FILE_DEPENDENCY=$(ls -c | head -n1)
-          dpkg -i "$FILE_DEPENDENCY"
+          tar -xf $FILE_DEPENDENCY
+
+          cd $FILE_DEPENDENCY
+
+          for debfile in $(ls *.deb); do
+
+            dpkg -i $debfile
+
+            done
+
           done
 
-          elif [ "$VAR2" == "a" ]; then
-              echo "APT-CACHE selected"
           else
             exit2
         fi
@@ -62,4 +68,9 @@ if [[ "$INSTALL_TYPE" == "d" ]]; then
     dpkg -i "$FILE"
 #else
 #    echo "Package $VAR1 it issss"
+
+# TODO mangler kontrol for rpm / alien
+# TODO mangler installation fra source
+
+
 fi

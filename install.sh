@@ -35,23 +35,35 @@ if [[ "$INSTALL_TYPE" == "d" ]]; then
     dpkg -i "$FILE" 2> error.log
 
     if [ $? -ne 0 ]; then
-        cat error.log | egrep -o "'[a-z0-9.-]+'" > dependencies
-
+        cat error.log | egrep -o "'[a-z0-9.-]+'" | tr -d \' > dependencies
+#Alternative recursive alle dependencies
+# https://stackoverflow.com/questions/22008193/how-to-list-download-the-recursive-dependencies-of-a-debian-package
+# apt-cache depends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances <your-package-here> | grep "^\w" | sort -u > dependencies
+#
         echo "Package needs these dependencies:"
-        cat dependencies | tr -d \'
+        cat dependencies
         read -p "Please choose how to handle dependencies: a:APT-CACHE download or e:exit " VAR2
 
         if [[ "$VAR2" == "a" ]]; then
-             for line in $(cat dependencies | tr -d \'); do
-          echo "Installing dependency: $line"
 
-          apt download $line
+          while read line; do
+              echo "Installing dependency: $line"
+              apt download "$line"
+              FILE_DEPENDENCY=$(ls -c | head -n1)
+              echo $FILE_DEPENDENCY
+              dpkg -i $FILE_DEPENDENCY
+          done < dependencies
 
-          FILE_DEPENDENCY=$(ls -c | head -n1)
-
-         dpkg -i $FILE_DEPENDENCY
-
-          done
+#             for line in $(cat dependencies | tr -d \'); do
+#          echo "Installing dependency: $line"
+#
+#          apt download "$line"
+#
+#          FILE_DEPENDENCY=$(ls -c | head -n1)
+#
+#         dpkg -i $FILE_DEPENDENCY
+#
+#          done
 
           else
             echo "Dependencies missing"

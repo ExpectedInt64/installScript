@@ -9,7 +9,7 @@ dpkg -s $VAR1 &> /dev/null
 if ! [ $? -ne 0 ]  # kontrol om exit status for den sidste kørte kommando
     then #Not installed
         echo "$VAR1 is already installed! Aborting!"
-        exit2
+        exit 2
 fi
 
 read -p "Install from source or with dpkg/rpm?  d:Dpkg or s:Source " INSTALL_TYPE
@@ -21,7 +21,7 @@ PERMISSON=$(stat -c "%a" /usr/local/src)
 
 if [ "$PERMISSON" -ne 777 ]; then
 
-    chmod -R 777 /usr/local/src 2> error2.log
+    chmod -R 777 /usr/local/src 2 > error2.log
 
 fi
 
@@ -35,7 +35,7 @@ if [[ "$INSTALL_TYPE" == "d" ]]; then
     dpkg -i "$FILE" 2> error.log
 
     if [ $? -ne 0 ]; then
-        cat error.log | egrep -o "'[a-z0-9-]+'" > dependencies
+        cat error.log | egrep -o "'[a-z0-9.-]+'" > dependencies
 
         echo "Package needs these dependencies:"
         cat dependencies | tr -d \'
@@ -48,24 +48,28 @@ if [[ "$INSTALL_TYPE" == "d" ]]; then
           apt download $line
 
           FILE_DEPENDENCY=$(ls -c | head -n1)
-          tar -xf $FILE_DEPENDENCY
 
-          cd $FILE_DEPENDENCY
-
-          for debfile in $(ls *.deb); do
-
-            dpkg -i $debfile
-
-            done
+         dpkg -i $FILE_DEPENDENCY
 
           done
 
           else
-            exit2
+            echo "Dependencies missing"
+            exit 2
         fi
     fi
 
     dpkg -i "$FILE"
+
+    if [ $? -ne 0 ]; then
+        echo "Installation failed"
+        exit 2
+        else
+          echo "Installation success exiting"
+          exit 0
+    fi
+
+
 #else
 #    echo "Package $VAR1 it issss"
 

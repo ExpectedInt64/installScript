@@ -35,10 +35,10 @@ if [[ "$INSTALL_TYPE" == "d" ]]; then
     dpkg -i "$FILE" 2> error.log
 
     if [ $? -ne 0 ]; then
-        cat error.log | egrep -o "'[a-z0-9.-]+'" | tr -d \' > dependencies
+#        cat error.log | egrep -o "'[a-z0-9.-]+'" | tr -d \' > dependencies
 #Alternative recursive alle dependencies
 # https://stackoverflow.com/questions/22008193/how-to-list-download-the-recursive-dependencies-of-a-debian-package
-# apt-cache depends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances <your-package-here> | grep "^\w" | sort -u > dependencies
+ apt-cache depends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances "$VAR1" | grep "^\w" | grep -v 386 > dependencies
 #
         echo "Package needs these dependencies:"
         cat dependencies
@@ -51,7 +51,7 @@ if [[ "$INSTALL_TYPE" == "d" ]]; then
               apt download "$line"
               FILE_DEPENDENCY=$(ls -c | head -n1)
               echo $FILE_DEPENDENCY
-              dpkg -i $FILE_DEPENDENCY
+              dpkg -i $FILE_DEPENDENCY 2>> error.log
           done < dependencies
 
 #             for line in $(cat dependencies | tr -d \'); do

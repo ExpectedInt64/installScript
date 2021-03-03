@@ -14,6 +14,13 @@ fi
 
 read -p "Install from source or with dpkg/rpm?  d:Dpkg or s:Source " INSTALL_TYPE
 
+whiptail --title "Install from source or with dpkg/rpm?" --radiolist \
+"Install from source or with dpkg/rpm?" 20 78 4 \
+"dpkg" "Install using dpkg" ON \
+"rpm" "Install using rpm" OFF \
+"source" "Install from source" OFF
+
+
 read -p "Link to file download: " FILE_LINK
 
 

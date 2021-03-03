@@ -54,21 +54,29 @@ if [[ "$INSTALL_TYPE" == "source" ]]; then
 
 fi
 
+# rpm
 if [[ "$INSTALL_TYPE" == "rpm" ]]; then
-    echo "$INSTALL_TYPE selected"
+    
     dpkg -s alien &> /dev/null
     
     if  [ $? -ne 0 ]  # kontrol om exit status for den sidste kørte kommando
         then #Not installed
-            echo "Alien is not installed! Install?"
-            if whiptail  --yesno "Alien is not installed! Install?" 10 100; then
-                echo "Yes!"
-            else
-                echo "No!"
-            fi
+            whiptail --msgbox "Alien is not installed, aborting!" 10 100
             exit 2
     fi
+    echo "Converting .rpm file"
+    alien /usr/local/src/$FILE
+    dpkg -i $(ls -c | head -n1)
+    if [ $? -ne 0 ]; then
+        echo "Installation failed"
+        whiptail --msgbox "Installation failed!" 10 100
 
+        exit 2
+        else
+        echo "Installation success exiting"
+        whiptail --msgbox "Installation success exiting!" 10 100
+        exit 0
+    fi
 fi
 
 # dpkg

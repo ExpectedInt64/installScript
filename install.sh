@@ -1,28 +1,39 @@
 #!/bin/bash
-
+echo ""
 echo "Welcome to package installer wizard!"
+whiptail --msgbox "Welcome to package installer wizard!" 10 100
 
-read -p "Which package do you wish to install? " VAR1
+# read -p "Which package do you wish to install? " VAR1
 
+VAR1=$(whiptail --inputbox "Which package do you wish to install?" 10 100 3>&1 1>&2 2>&3)
+VAR2="b"
+echo "name: $VAR1"
 dpkg -s $VAR1 &> /dev/null
     
 if ! [ $? -ne 0 ]  # kontrol om exit status for den sidste kørte kommando
     then #Not installed
         echo "$VAR1 is already installed! Aborting!"
+        whiptail --msgbox "$VAR1 is already installed! Aborting!" 10 100
         exit 2
 fi
 
-read -p "Install from source or with dpkg/rpm?  d:Dpkg or s:Source " INSTALL_TYPE
+# read -p "Install from source or with dpkg/rpm?  d:Dpkg or s:Source " INSTALL_TYPE
 
-whiptail --title "Install from source or with dpkg/rpm?" --radiolist \
-"Install from source or with dpkg/rpm?" 20 78 4 \
-"dpkg" "Install using dpkg" ON \
-"rpm" "Install using rpm" OFF \
-"source" "Install from source" OFF
+INSTALL_TYPE=$(whiptail --menu "Choose an option" 18 100 10 \
+  "dpkg" "A description for the tiny option." \
+  "rpm" "A description for the small option." \
+  "source" "A description for the medium option." 3>&1 1>&2 2>&3)
 
+if [ -z "$INSTALL_TYPE" ]; then
+  echo "No option was chosen (user hit Cancel)" 
+else
+  echo "The user chose $INSTALL_TYPE"
+fi
 
-read -p "Link to file download: " FILE_LINK
+echo ""
 
+# read -p "Link to file download: " FILE_LINK
+FILE_LINK=$(whiptail --inputbox "Link to file download!" 10 100 3>&1 1>&2 2>&3)
 
 PERMISSON=$(stat -c "%a" /usr/local/src)
 
@@ -37,7 +48,7 @@ cd /usr/local/src
 wget "$FILE_LINK"
 FILE=$(ls -c | head -n1)
 
-if [[ "$INSTALL_TYPE" == "d" ]]; then
+if [[ "$INSTALL_TYPE" == "dpkg" ]]; then
     echo "dpkg selected"
     dpkg -i "$FILE" 2> error.log
 
@@ -48,8 +59,23 @@ if [[ "$INSTALL_TYPE" == "d" ]]; then
  apt-cache depends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances "$VAR1" | grep "^\w" | grep -v 386 > dependencies
 #
         echo "Package needs these dependencies:"
+        whiptail --title "Package needs these dependencies (Scroll for more dependencies):" --textbox dependencies 30 100 --scrolltext
         cat dependencies
-        read -p "Please choose how to handle dependencies: a:APT-CACHE download or e:exit " VAR2
+        # read -p "Please choose how to handle dependencies: a:APT-CACHE download or e:exit " VAR2
+        
+        if whiptail --yesno "Do you want to install dependencies?" 10 100; then
+            echo "Yes!"
+            VAR2="a"
+        else
+            echo "No!"
+            exit 2
+        fi
+
+        if [ -z "$INSTALL_TYPE" ]; then
+            echo "No option was chosen (user hit Cancel)" 
+        else
+            echo "The user chose $INSTALL_TYPE"
+        fi
 
         if [[ "$VAR2" == "a" ]]; then
 
@@ -82,9 +108,12 @@ if [[ "$INSTALL_TYPE" == "d" ]]; then
 
     if [ $? -ne 0 ]; then
         echo "Installation failed"
+        whiptail --msgbox "Installation failed!" 10 100
+
         exit 2
         else
           echo "Installation success exiting"
+          whiptail --msgbox "Installation success exiting!" 10 100
           exit 0
     fi
 

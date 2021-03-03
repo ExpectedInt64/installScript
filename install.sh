@@ -20,12 +20,13 @@ fi
 # read -p "Install from source or with dpkg/rpm?  d:Dpkg or s:Source " INSTALL_TYPE
 
 INSTALL_TYPE=$(whiptail --menu "Choose an option" 18 100 10 \
-  "dpkg" "A description for the tiny option." \
-  "rpm" "A description for the small option." \
-  "source" "A description for the medium option." 3>&1 1>&2 2>&3)
+  "dpkg" "Install using dpkg" \
+  "rpm" "Install using rpm (Requires Alien)" \
+  "source" "Install from source" 3>&1 1>&2 2>&3)
 
 if [ -z "$INSTALL_TYPE" ]; then
   echo "No option was chosen (user hit Cancel)"
+  exit 2
 else
   echo "The user chose $INSTALL_TYPE"
 fi
@@ -48,16 +49,44 @@ cd /usr/local/src
 wget "$FILE_LINK"
 FILE=$(ls -c | head -n1)
 
+if [[ "$INSTALL_TYPE" == "source" ]]; then
+    echo "$INSTALL_TYPE selected"
+
+fi
+
+if [[ "$INSTALL_TYPE" == "rpm" ]]; then
+    echo "$INSTALL_TYPE selected"
+    dpkg -s alien &> /dev/null
+    
+    if  [ $? -ne 0 ]  # kontrol om exit status for den sidste kørte kommando
+        then #Not installed
+            echo "Alien is not installed! Install?"
+            if whiptail  --yesno "Alien is not installed! Install?" 10 100; then
+                echo "Yes!"
+            else
+                echo "No!"
+            fi
+            exit 2
+    fi
+
+fi
+
+# dpkg
 if [[ "$INSTALL_TYPE" == "dpkg" ]]; then
-    echo "dpkg selected"
+    echo "$INSTALL_TYPE selected"
     dpkg -i "$FILE" 2> error.log
 
     if [ $? -ne 0 ]; then
       echo "These dependencies missing:"
     cat error.log | egrep -o "'[a-z0-9.-]+'" | tr -d \'
 
-      read -p "Download and install all dependencies (r)ecursivly, Download and install only (m)issing dependencies (Fails if there is recursive dependency missing) or (e)xit " dpkgtype
-        if [ "$dpkgtype" = "m" ]; then
+
+        dpkgtype=$(whiptail --menu "Choose an option" 18 120 10 \
+        "missing" "Download and install only missing dependencies (Fails if there is recursive dependency missing)" \
+        "all" "Download and install all dependencies recursivly" 3>&1 1>&2 2>&3)
+
+        # read -p "Download and install all dependencies (r)ecursivly, Download and install only (m)issing dependencies (Fails if there is recursive dependency missing) or (e)xit " dpkgtype
+        if [ "$dpkgtype" = "missing" ]; then
           cat error.log | egrep -o "'[a-z0-9.-]+'" | tr -d \' > dependencies
           for line in $(cat dependencies | tr -d \'); do
           echo "Installing dependency: $line"
@@ -66,13 +95,13 @@ if [[ "$INSTALL_TYPE" == "dpkg" ]]; then
           dpkg -i $FILE_DEPENDENCY
           done
 
-     elif [ "$dpkgtype" = "r" ]; then
+     elif [ "$dpkgtype" = "all" ]; then
 #Alternative recursive alle dependencies
 # https://stackoverflow.com/questions/22008193/how-to-list-download-the-recursive-dependencies-of-a-debian-package
  apt-cache depends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances "$VAR1" | grep "^\w" | grep -v 386 > dependencies
-        echo "Package needs these dependencies:"
+        # echo "Package needs these dependencies:"
         whiptail --title "Package needs these dependencies (Scroll for more dependencies):" --textbox dependencies 30 100 --scrolltext
-        cat dependencies
+        # cat dependencies
 
        cat dependencies | grep "^lib" | while read line; do
               echo "Installing dependency: $line"

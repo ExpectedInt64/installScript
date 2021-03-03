@@ -44,13 +44,52 @@ if [ "$PERMISSON" -ne 777 ]; then
 
 fi
 
+
+
 cd /usr/local/src
 
-wget "$FILE_LINK"
+echo "$FILE_LINK" | grep "git$"
+
+if [ $? -eq 0 ]; then
+    git clone $FILE_LINK
+    cd /usr/local/src/$(ls -c | head -n1)
+    autoreconf -i
+else
+    wget "$FILE_LINK"
+fi
+
 FILE=$(ls -c | head -n1)
 
 if [[ "$INSTALL_TYPE" == "source" ]]; then
     echo "$INSTALL_TYPE selected"
+    
+    dpkg -s bzip2 &> /dev/null
+    
+    if  [ $? -ne 0 ]  # kontrol om exit status for den sidste kørte kommando
+        then #Not installed
+            whiptail --msgbox "bzip2 is not installed, aborting!" 10 100
+            exit 2
+    fi
+
+    dpkg -s tar &> /dev/null
+    
+    if  [ $? -ne 0 ]  # kontrol om exit status for den sidste kørte kommando
+        then #Not installed
+            whiptail --msgbox "tar is not installed, aborting!" 10 100
+            exit 2
+    fi
+
+    if [ "$FILE" == *.bz2 ]; then
+        bzip2 -cd /usr/local/src/$FILE | tar xvf -
+        cd /usr/local/src/$(ls -c | head -n1)
+    elif [ "$FILE" == *.gz ]; then
+        gzip -cd /usr/local/src/$FILE | tar xvf -
+        cd /usr/local/src/$(ls -c | head -n1)
+    fi
+    ./configure
+    make
+    make install
+    
 
 fi
 

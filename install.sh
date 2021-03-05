@@ -83,7 +83,7 @@ if [ $? -eq 0 ]; then
     autoreconf -i
 else
     wget "$FILE_LINK"
-    chmod -R 777 /usr/local/src 2 > error2.log
+#    chmod -R 777 /usr/local/src 2 > error2.log
 fi
 
 FILE=$(ls -c | head -n1)

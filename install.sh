@@ -1,4 +1,5 @@
 #!/bin/bash
+
 echo ""
 echo "Welcome to package installer wizard!"
 whiptail --msgbox "Welcome to package installer wizard!" 10 100
@@ -6,16 +7,44 @@ whiptail --msgbox "Welcome to package installer wizard!" 10 100
 # read -p "Which package do you wish to install? " VAR1
 
 VAR1=$(whiptail --inputbox "Which package do you wish to install?" 10 100 3>&1 1>&2 2>&3)
-VAR2="b"
 echo "name: $VAR1"
-dpkg -s $VAR1 &> /dev/null
-    
-if ! [ $? -ne 0 ]  # kontrol om exit status for den sidste kørte kommando
-    then #Not installed
+
+#################### FUNCTIONS ####################
+packageExist(){
+
+     if  [ "$1" == "bzip2" ] || [ "$1" == "tar" ] || [ "$1" == "gzip" ] || [ "$1" == "alien" ]
+      then
+        dpkg -s $1 &> /dev/null
+        if [ $? -ne 0 ]; then
+            echo "$1 is not installed! Aborting!"
+            whiptail --msgbox "$1 is not installed! Aborting!" 10 100
+            exit 2
+        fi
+    fi
+
+    if [ "$1" == "checkinstall" ]; then
+        dpkg -s $1 &> /dev/null
+        if [ $? -eq 0 ]; then
+            return 0
+        else
+            return 1
+        fi
+    fi
+
+    if [ "$1" == "package_Check" ]; then
+    dpkg -s "$VAR1" &> /dev/null
+      if ! [ $? -ne 0 ] ;   # kontrol om exit status for den sidste kørte kommando
+      then #Not installed
         echo "$VAR1 is already installed! Aborting!"
         whiptail --msgbox "$VAR1 is already installed! Aborting!" 10 100
         exit 2
-fi
+     fi
+    fi
+
+}
+#################### End ####################
+
+packageExist "package_Check"
 
 # read -p "Install from source or with dpkg/rpm?  d:Dpkg or s:Source " INSTALL_TYPE
 
@@ -44,8 +73,6 @@ if [ "$PERMISSON" -ne 777 ]; then
 
 fi
 
-
-
 cd /usr/local/src
 
 echo "$FILE_LINK" | grep "git$"
@@ -56,57 +83,38 @@ if [ $? -eq 0 ]; then
     autoreconf -i
 else
     wget "$FILE_LINK"
+    chmod -R 777 /usr/local/src 2 > error2.log
 fi
 
 FILE=$(ls -c | head -n1)
 
 if [[ "$INSTALL_TYPE" == "source" ]]; then
     echo "$INSTALL_TYPE selected"
-    
-    dpkg -s bzip2 &> /dev/null
-    
-    if  [ $? -ne 0 ]  # kontrol om exit status for den sidste kørte kommando
-        then #Not installed
-            whiptail --msgbox "bzip2 is not installed, aborting!" 10 100
-            exit 2
-    fi
+    packageExist "tar"
 
-    dpkg -s tar &> /dev/null
-    
-    if  [ $? -ne 0 ]  # kontrol om exit status for den sidste kørte kommando
-        then #Not installed
-            whiptail --msgbox "tar is not installed, aborting!" 10 100
-            exit 2
-    fi
-
-    if [ "$FILE" == *.bz2 ]; then
+    if [[ "$FILE" == *.bz2 ]]; then
+        packageExist "bzip2"
         bzip2 -cd /usr/local/src/$FILE | tar xvf -
         cd /usr/local/src/$(ls -c | head -n1)
-    elif [ "$FILE" == *.gz ]; then
+    elif [[ "$FILE" == *.gz ]]; then
+        packageExist "gzip"
         gzip -cd /usr/local/src/$FILE | tar xvf -
         cd /usr/local/src/$(ls -c | head -n1)
     fi
     ./configure
     make
-    make install
-    
+
+   packageExist "checkinstall" && checkinstall || make install
 
 fi
 
 # rpm
 if [[ "$INSTALL_TYPE" == "rpm" ]]; then
-    
-    dpkg -s alien &> /dev/null
-    
-    if  [ $? -ne 0 ]  # kontrol om exit status for den sidste kørte kommando
-        then #Not installed
-            whiptail --msgbox "Alien is not installed, aborting!" 10 100
-            exit 2
-    fi
-    echo "Converting .rpm file"
-    alien /usr/local/src/$FILE
-    dpkg -i $(ls -c | head -n1)
-    if [ $? -ne 0 ]; then
+  packageExist "alien"
+  echo "Converting .rpm file"
+  alien /usr/local/src/"$FILE"
+  dpkg -i "$(ls -c | head -n1)"
+  if [ $? -ne 0 ]; then
         echo "Installation failed"
         whiptail --msgbox "Installation failed!" 10 100
 
@@ -115,7 +123,7 @@ if [[ "$INSTALL_TYPE" == "rpm" ]]; then
         echo "Installation success exiting"
         whiptail --msgbox "Installation success exiting!" 10 100
         exit 0
-    fi
+  fi
 fi
 
 # dpkg
@@ -126,7 +134,6 @@ if [[ "$INSTALL_TYPE" == "dpkg" ]]; then
     if [ $? -ne 0 ]; then
       echo "These dependencies missing:"
     cat error.log | egrep -o "'[a-z0-9.-]+'" | tr -d \'
-
 
         dpkgtype=$(whiptail --menu "Choose an option" 18 120 10 \
         "missing" "Download and install only missing dependencies (Fails if there is recursive dependency missing)" \
@@ -186,9 +193,5 @@ fi
           exit 0
     fi
 
-
-#else
-#    echo "Package $VAR1 it issss"
-
-# TODO mangler kontrol for rpm / alien
-# TODO mangler installation fra source
+    # https://devhints.io/bash
+    # whiptail link here

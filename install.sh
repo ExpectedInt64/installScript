@@ -1,4 +1,19 @@
 #!/bin/bash
+
+#################### FUNCTIONS ####################
+
+packageExist(){
+  dpkg -s $1 &> /dev/null
+  if ! [ $? -ne 0 ]  # kontrol om exit status for den sidste kørte kommando
+    then #Not installed
+        echo "$1 is already installed! Aborting!"
+        whiptail --msgbox "$1 is already installed! Aborting!" 10 100
+        exit 2
+  fi
+}
+
+
+
 echo ""
 echo "Welcome to package installer wizard!"
 whiptail --msgbox "Welcome to package installer wizard!" 10 100
@@ -8,14 +23,8 @@ whiptail --msgbox "Welcome to package installer wizard!" 10 100
 VAR1=$(whiptail --inputbox "Which package do you wish to install?" 10 100 3>&1 1>&2 2>&3)
 VAR2="b"
 echo "name: $VAR1"
-dpkg -s $VAR1 &> /dev/null
-    
-if ! [ $? -ne 0 ]  # kontrol om exit status for den sidste kørte kommando
-    then #Not installed
-        echo "$VAR1 is already installed! Aborting!"
-        whiptail --msgbox "$VAR1 is already installed! Aborting!" 10 100
-        exit 2
-fi
+
+packageExist "$VAR1"
 
 # read -p "Install from source or with dpkg/rpm?  d:Dpkg or s:Source " INSTALL_TYPE
 
@@ -79,17 +88,27 @@ if [[ "$INSTALL_TYPE" == "source" ]]; then
             exit 2
     fi
 
-    if [ "$FILE" == *.bz2 ]; then
+    if [[ "$FILE" == *.bz2 ]]; then
         bzip2 -cd /usr/local/src/$FILE | tar xvf -
         cd /usr/local/src/$(ls -c | head -n1)
-    elif [ "$FILE" == *.gz ]; then
+    elif [[ "$FILE" == *.gz ]]; then
         gzip -cd /usr/local/src/$FILE | tar xvf -
         cd /usr/local/src/$(ls -c | head -n1)
     fi
     ./configure
     make
+
+    dpkg -s checkinstall &> /dev/null
+
+if  [ $? -eq 0 ]  # kontrol om exit status for den sidste kørte kommando
+    then
+        echo "checkinstall is found on your system"
+
+        checkinstall
+
+    else
     make install
-    
+   fi
 
 fi
 
@@ -185,10 +204,3 @@ fi
           whiptail --msgbox "Installation success exiting!" 10 100
           exit 0
     fi
-
-
-#else
-#    echo "Package $VAR1 it issss"
-
-# TODO mangler kontrol for rpm / alien
-# TODO mangler installation fra source

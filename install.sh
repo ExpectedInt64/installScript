@@ -155,24 +155,23 @@ if [[ "$INSTALL_TYPE" == "dpkg" ]]; then
  apt-cache depends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances "$VAR1" | grep "^\w" | grep -v 386 > dependencies
         # echo "Package needs these dependencies:"
         whiptail --title "Package needs these dependencies (Scroll for more dependencies):" --textbox dependencies 30 100 --scrolltext
+        # cat dependencies
 
-        dpkg -i *.deb
+       cat dependencies | grep "^lib" | while read line; do
+              echo "Installing dependency: $line"
+              apt download "$line"
+              FILE_DEPENDENCY=$(ls -c | head -n1)
+              echo $FILE_DEPENDENCY
+              dpkg -i $FILE_DEPENDENCY 2>> error.log
+          done
 
-#       cat dependencies | grep "^lib" | while read line; do
-#              echo "Installing dependency: $line"
-#              apt download "$line"
-#              FILE_DEPENDENCY=$(ls -c | head -n1)
-#              echo $FILE_DEPENDENCY
-#              dpkg -i $FILE_DEPENDENCY 2>> error.log
-#          done
-#
-#        cat dependencies | grep -v "^lib" |  while read line; do
-#              echo "Installing dependency: $line"
-#              apt download "$line"
-#              FILE_DEPENDENCY=$(ls -c | head -n1)
-#              echo $FILE_DEPENDENCY
-#              dpkg -i $FILE_DEPENDENCY 2>> error.log
-#          done
+        cat dependencies | grep -v "^lib" |  while read line; do
+              echo "Installing dependency: $line"
+              apt download "$line"
+              FILE_DEPENDENCY=$(ls -c | head -n1)
+              echo $FILE_DEPENDENCY
+              dpkg -i $FILE_DEPENDENCY 2>> error.log
+          done
 
 
           else

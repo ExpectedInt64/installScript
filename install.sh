@@ -142,12 +142,9 @@ if [[ "$INSTALL_TYPE" == "dpkg" ]]; then
         # read -p "Download and install all dependencies (r)ecursivly, Download and install only (m)issing dependencies (Fails if there is recursive dependency missing) or (e)xit " dpkgtype
         if [ "$dpkgtype" = "missing" ]; then
           cat error.log | egrep -o "'[a-z0-9.-]+'" | tr -d \' > dependencies
-          for line in $(cat dependencies | tr -d \'); do
-          echo "Installing dependency: $line"
-          apt download "$line"
-          FILE_DEPENDENCY=$(ls -c | head -n1)
-          dpkg -i $FILE_DEPENDENCY
-          done
+
+          apt download $(cat dependencies) 2>> error.log
+          dpkg -i *.deb 2>> error.log
 
      elif [ "$dpkgtype" = "all" ]; then
 #Alternative recursive alle dependencies
@@ -157,22 +154,8 @@ if [[ "$INSTALL_TYPE" == "dpkg" ]]; then
         whiptail --title "Package needs these dependencies (Scroll for more dependencies):" --textbox dependencies 30 100 --scrolltext
         # cat dependencies
 
-       cat dependencies | grep "^lib" | while read line; do
-              echo "Installing dependency: $line"
-              apt download "$line"
-              FILE_DEPENDENCY=$(ls -c | head -n1)
-              echo $FILE_DEPENDENCY
-              dpkg -i $FILE_DEPENDENCY 2>> error.log
-          done
-
-        cat dependencies | grep -v "^lib" |  while read line; do
-              echo "Installing dependency: $line"
-              apt download "$line"
-              FILE_DEPENDENCY=$(ls -c | head -n1)
-              echo $FILE_DEPENDENCY
-              dpkg -i $FILE_DEPENDENCY 2>> error.log
-          done
-
+        apt download $(cat dependencies) 2>> error.log
+        dpkg -i *.deb 2>> error.log
 
           else
             echo "Dependencies missing"
@@ -189,7 +172,13 @@ fi
         exit 2
         else
           echo "Installation success exiting"
-          whiptail --msgbox "Installation success exiting!" 10 100
+          folder=$(date -u +"%Y-%m-%dT%H_%M_%S")
+          mkdir "$folder"
+          mv *.deb "$folder/"
+          echo "Installation success" >> error.log
+
+
+          whiptail --msgbox "Installation success exiting! Please look at error.log at /usr/local/src/error.log If there is any broken packages fix it with: (apt --fix-broken install). All necessary packages can be found at /usr/local/src/$folder" 10 100
           exit 0
     fi
 

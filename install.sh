@@ -1,15 +1,14 @@
 #!/bin/bash
 
 echo ""
-echo "Welcome to package installer wizard!"
+# Greeting
 whiptail --msgbox "Welcome to package installer wizard!" 10 100
-
-# read -p "Which package do you wish to install? " VAR1
 
 VAR1=$(whiptail --inputbox "Which package do you wish to install?" 10 100 3>&1 1>&2 2>&3)
 echo "name: $VAR1"
 
-#################### FUNCTIONS ####################
+#################### FUNCTION ####################
+# Handles necessary packages to install from different installation types
 packageExist(){
 
      if  [ "$1" == "bzip2" ] || [ "$1" == "tar" ] || [ "$1" == "gzip" ] || [ "$1" == "alien" ]
@@ -46,8 +45,7 @@ packageExist(){
 
 packageExist "package_Check"
 
-# read -p "Install from source or with dpkg/rpm?  d:Dpkg or s:Source " INSTALL_TYPE
-
+# User can choose different installation types from the selection
 INSTALL_TYPE=$(whiptail --menu "Choose an option" 18 100 10 \
   "dpkg" "Install using dpkg" \
   "rpm" "Install using rpm (Requires Alien)" \
@@ -57,37 +55,41 @@ if [ -z "$INSTALL_TYPE" ]; then
   echo "No option was chosen (user hit Cancel)"
   exit 2
 else
-  echo "The user chose $INSTALL_TYPE"
+  echo "The user choose $INSTALL_TYPE"
 fi
 
 echo ""
 
-# read -p "Link to file download: " FILE_LINK
+# User can type whatever link to a file to be downloaded
 FILE_LINK=$(whiptail --inputbox "Link to file download!" 10 100 3>&1 1>&2 2>&3)
 
+# Checking permissons at /usr/local/src and changes them to all access
 PERMISSON=$(stat -c "%a" /usr/local/src)
 
-if [ "$PERMISSON" -ne 777 ]; then
+if [ "$PERMISSON" -ne 775 ]; then
 
-    chmod -R 777 /usr/local/src 2 > error2.log
+    chmod -R 775 /usr/local/src 2> error2.log
 
 fi
 
 cd /usr/local/src
+touch error.log
 
+# Clone repo if it is a git link
 echo "$FILE_LINK" | grep "git$"
-
 if [ $? -eq 0 ]; then
-    git clone $FILE_LINK
+    git clone $FILE_LINK 2>> /usr/local/src/error.log
     cd /usr/local/src/$(ls -c | head -n1)
     autoreconf -i
 else
     wget "$FILE_LINK"
-#    chmod -R 777 /usr/local/src 2 > error2.log
 fi
 
+#Last file modified in the directory
 FILE=$(ls -c | head -n1)
+chmod -R 775 /usr/local/src 2>> /usr/local/src/error.log
 
+# Installation type Source
 if [[ "$INSTALL_TYPE" == "source" ]]; then
     echo "$INSTALL_TYPE selected"
     packageExist "tar"
@@ -103,30 +105,34 @@ if [[ "$INSTALL_TYPE" == "source" ]]; then
     fi
     ./configure
     make
-
-   packageExist "checkinstall" && checkinstall || make install
-
+    packageExist "checkinstall" && checkinstall || make install 2>> /usr/local/src/error.log
+    whiptail --msgbox "Installation success exiting! Please look at error.log at /usr/local/src/error.log" 10 100
+    echo "Installation success" >> /usr/local/src/error.log
+    chmod -R 775 /usr/local/src
+    exit 0
 fi
 
-# rpm
+# Installation type RPM
 if [[ "$INSTALL_TYPE" == "rpm" ]]; then
   packageExist "alien"
   echo "Converting .rpm file"
   alien /usr/local/src/"$FILE"
-  dpkg -i "$(ls -c | head -n1)"
+  dpkg -i "$(ls -c | head -n1)" 2>> /usr/local/src/error.log
   if [ $? -ne 0 ]; then
-        echo "Installation failed"
+        echo "Installation failed" >> /usr/local/src/error.log
         whiptail --msgbox "Installation failed!" 10 100
-
+        chmod -R 775 /usr/local/src
         exit 2
+
         else
-        echo "Installation success exiting"
+        echo "Installation success exiting" >> /usr/local/src/error.log
         whiptail --msgbox "Installation success exiting!" 10 100
+        chmod -R 775 /usr/local/src
         exit 0
   fi
 fi
 
-# dpkg
+# Installation type DPKG
 if [[ "$INSTALL_TYPE" == "dpkg" ]]; then
     echo "$INSTALL_TYPE selected"
     dpkg -i "$FILE" 2> error.log
@@ -139,26 +145,25 @@ if [[ "$INSTALL_TYPE" == "dpkg" ]]; then
         "missing" "Download and install only missing dependencies (Fails if there is recursive dependency missing)" \
         "all" "Download and install all dependencies recursivly" 3>&1 1>&2 2>&3)
 
-        # read -p "Download and install all dependencies (r)ecursivly, Download and install only (m)issing dependencies (Fails if there is recursive dependency missing) or (e)xit " dpkgtype
         if [ "$dpkgtype" = "missing" ]; then
           cat error.log | egrep -o "'[a-z0-9.-]+'" | tr -d \' > dependencies
-
-          apt download $(cat dependencies) 2>> error.log
-          dpkg -i *.deb 2>> error.log
+          whiptail --title "Package needs these dependencies (Scroll for more dependencies):" --textbox dependencies 30 100 --scrolltext
+          apt download $(cat dependencies) 2>> /usr/local/src/error.log
+          dpkg -i *.deb 2>> /usr/local/src/error.log
 
      elif [ "$dpkgtype" = "all" ]; then
-#Alternative recursive alle dependencies
+# Recursive all dependencies
 # https://stackoverflow.com/questions/22008193/how-to-list-download-the-recursive-dependencies-of-a-debian-package
  apt-cache depends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances "$VAR1" | grep "^\w" | grep -v 386 > dependencies
         # echo "Package needs these dependencies:"
         whiptail --title "Package needs these dependencies (Scroll for more dependencies):" --textbox dependencies 30 100 --scrolltext
         # cat dependencies
 
-        apt download $(cat dependencies) 2>> error.log
-        dpkg -i *.deb 2>> error.log
+        apt download $(cat dependencies) 2>> /usr/local/src/error.log
+        dpkg -i *.deb 2>> /usr/local/src/error.log
 
           else
-            echo "Dependencies missing"
+            echo "Dependencies missing" >> /usr/local/src/error.log
             exit 2
         fi
     fi
@@ -166,21 +171,23 @@ if [[ "$INSTALL_TYPE" == "dpkg" ]]; then
     dpkg -i "$FILE"
 fi
     if [ $? -ne 0 ]; then
-        echo "Installation failed"
-        whiptail --msgbox "Installation failed!" 10 100
-
+        echo "Installation failed" >> /usr/local/src/error.log
+        folder=$(date -u +"%Y-%m-%dT%H_%M_%S")
+        mkdir "$folder"
+        mv *.deb "$folder/"
+        whiptail --msgbox "Installation failed! Dependencies have been moved to /usr/local/src/$folder If there is any broken packages fix it with: (apt --fix-broken install). " 10 100
+        chmod -R 775 /usr/local/src
         exit 2
         else
-          echo "Installation success exiting"
+          echo "Installation success exiting" >> /usr/local/src/error.log
           folder=$(date -u +"%Y-%m-%dT%H_%M_%S")
           mkdir "$folder"
           mv *.deb "$folder/"
-          echo "Installation success" >> error.log
-
-
+          echo "Installation success" >> /usr/local/src/error.log
           whiptail --msgbox "Installation success exiting! Please look at error.log at /usr/local/src/error.log If there is any broken packages fix it with: (apt --fix-broken install). All necessary packages can be found at /usr/local/src/$folder" 10 100
+          chmod -R 775 /usr/local/src
           exit 0
     fi
 
     # https://devhints.io/bash
-    # whiptail link here
+    # https://gijs-de-jong.nl/posts/pretty-dialog-boxes-for-your-shell-scripts-using-whiptail/

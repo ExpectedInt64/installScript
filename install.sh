@@ -66,9 +66,9 @@ FILE_LINK=$(whiptail --inputbox "Link to file download!" 10 100 3>&1 1>&2 2>&3)
 # Checking permissons at /usr/local/src and changes them to all access
 PERMISSON=$(stat -c "%a" /usr/local/src)
 
-if [ "$PERMISSON" -ne 775 ]; then
+if [ "$PERMISSON" -ne 777 ]; then
 
-    chmod -R 775 /usr/local/src 2> error2.log
+    chmod -R 777 /usr/local/src 2> error2.log
 
 fi
 
@@ -87,7 +87,7 @@ fi
 
 #Last file modified in the directory
 FILE=$(ls -c | head -n1)
-chmod -R 775 /usr/local/src 2>> /usr/local/src/error.log
+chmod -R 777 /usr/local/src 2>> /usr/local/src/error.log
 
 # Installation type Source
 if [[ "$INSTALL_TYPE" == "source" ]]; then
@@ -108,7 +108,7 @@ if [[ "$INSTALL_TYPE" == "source" ]]; then
     packageExist "checkinstall" && checkinstall || make install 2>> /usr/local/src/error.log
     whiptail --msgbox "Installation success exiting! Please look at error.log at /usr/local/src/error.log" 10 100
     echo "Installation success" >> /usr/local/src/error.log
-    chmod -R 775 /usr/local/src
+    chmod -R 777 /usr/local/src
     exit 0
 fi
 
@@ -121,13 +121,13 @@ if [[ "$INSTALL_TYPE" == "rpm" ]]; then
   if [ $? -ne 0 ]; then
         echo "Installation failed" >> /usr/local/src/error.log
         whiptail --msgbox "Installation failed!" 10 100
-        chmod -R 775 /usr/local/src
+        chmod -R 777 /usr/local/src
         exit 2
 
         else
         echo "Installation success exiting" >> /usr/local/src/error.log
         whiptail --msgbox "Installation success exiting!" 10 100
-        chmod -R 775 /usr/local/src
+        chmod -R 777 /usr/local/src
         exit 0
   fi
 fi
@@ -176,7 +176,7 @@ fi
         mkdir "$folder"
         mv *.deb "$folder/"
         whiptail --msgbox "Installation failed! Dependencies have been moved to /usr/local/src/$folder If there is any broken packages fix it with: (apt --fix-broken install). " 10 100
-        chmod -R 775 /usr/local/src
+        chmod -R 777 /usr/local/src
         exit 2
         else
           echo "Installation success exiting" >> /usr/local/src/error.log
@@ -185,7 +185,7 @@ fi
           mv *.deb "$folder/"
           echo "Installation success" >> /usr/local/src/error.log
           whiptail --msgbox "Installation success exiting! Please look at error.log at /usr/local/src/error.log If there is any broken packages fix it with: (apt --fix-broken install). All necessary packages can be found at /usr/local/src/$folder" 10 100
-          chmod -R 775 /usr/local/src
+          chmod -R 777 /usr/local/src
           exit 0
     fi
 

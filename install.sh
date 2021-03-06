@@ -172,7 +172,7 @@ if [[ "$INSTALL_TYPE" == "dpkg" ]]; then
 fi
     if [ $? -ne 0 ]; then
         echo "Installation failed" >> /usr/local/src/error.log
-        folder=$(date -u +"%Y-%m-%dT%H_%M_%S")
+        folder="$VAR1-$(date -u +"%Y-%m-%dT%H_%M_%S")"
         mkdir "$folder"
         mv *.deb "$folder/"
         whiptail --msgbox "Installation failed! Dependencies have been moved to /usr/local/src/$folder If there is any broken packages fix it with: (apt --fix-broken install). " 10 100
@@ -180,7 +180,7 @@ fi
         exit 2
         else
           echo "Installation success exiting" >> /usr/local/src/error.log
-          folder=$(date -u +"%Y-%m-%dT%H_%M_%S")
+          folder="$VAR1-$(date -u +"%Y-%m-%dT%H_%M_%S")"
           mkdir "$folder"
           mv *.deb "$folder/"
           echo "Installation success" >> /usr/local/src/error.log
